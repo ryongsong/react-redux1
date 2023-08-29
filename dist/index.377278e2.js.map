@@ -1,0 +1,1 @@
+{"mappings":"AAAA,MAAM,UAAkB,SAAS,cAAc,MAAM;AAErD,QAAQ,IAAI","sources":["src/index.ts"],"sourcesContent":["const message: string = document.querySelector(\"h1\").textContent;\n\nconsole.log(message);\n\n"],"names":[],"version":3,"file":"index.377278e2.js.map","sourceRoot":"/__parcel_source_root/"}
