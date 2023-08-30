@@ -32465,6 +32465,104 @@ function castDraft(value) {
 function castImmutable(value) {
   return value;
 }
+},{}],"util.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.randomID = randomID;
+exports.sortBy = sortBy;
+/**
+ * ランダムな ID `[0-9A-Za-z_-]{12}` を作成する
+ */
+function randomID() {
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-';
+  let id = '';
+  for (let i = 12; i > 0; i--) {
+    id += alphabet[Math.random() * 64 | 0];
+  }
+  return id;
+}
+/**
+ * リストをリストの順序情報に従ってソートした新しいリストを返す
+ *
+ * @param list リスト
+ * @param order リストの順序情報
+ * @param head リストの先頭のキー
+ */
+function sortBy(list, order, head) {
+  const map = list.reduce((m, e) => m.set(e.id, e), new Map());
+  const sorted = [];
+  let id = order[head];
+  for (let i = list.length; i > 0; i--) {
+    if (!id || id === head) break;
+    const e = map.get(id);
+    if (e) sorted.push(e);
+    id = order[id];
+  }
+  return sorted;
+}
+},{}],"api.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.Endpoint = exports.APIError = void 0;
+exports.api = api;
+const Endpoint = "http://localhost:3000/api" || 'http://localhost:3000/api';
+exports.Endpoint = Endpoint;
+async function api(key, payload) {
+  const [method, path] = key.split(' ');
+  if (!method || !path) {
+    throw new Error(`Unrecognized api: ${key}`);
+  }
+  let pathWithID = '';
+  const option = {
+    method
+  };
+  switch (option.method) {
+    case 'GET':
+    case 'DELETE':
+      if (payload && 'id' in payload) {
+        pathWithID = `${path}/${payload.id}`;
+      }
+      break;
+    case 'POST':
+      option.headers = {
+        'Content-Type': 'application/json'
+      };
+      option.body = JSON.stringify(payload);
+      break;
+    case 'PATCH':
+      if (payload && 'id' in payload) {
+        pathWithID = `${path}/${payload.id}`;
+      }
+      option.headers = {
+        'Content-Type': 'application/json'
+      };
+      option.body = JSON.stringify(payload);
+      break;
+  }
+  return fetch(`${Endpoint}${pathWithID || path}`, option).then(res => res.ok ? res.json() : res.text().then(text => {
+    throw new APIError(method, res.url, res.status, res.statusText, res.ok, res.redirected, res.type, text);
+  }));
+}
+class APIError extends Error {
+  constructor(method, url, status, statusText, ok, redirected, type, text) {
+    super(`${method} ${url} ${status} (${statusText})`);
+    this.method = method;
+    this.url = url;
+    this.status = status;
+    this.statusText = statusText;
+    this.ok = ok;
+    this.redirected = redirected;
+    this.type = type;
+    this.text = text;
+  }
+}
+exports.APIError = APIError;
 },{}],"color.tsx":[function(require,module,exports) {
 "use strict";
 
@@ -32701,7 +32799,70 @@ const DropAreaIndicator = _styledComponents.default.div`
   border-radius: 6px;
   transition: all 50ms ease-out;
 `;
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.tsx","./icon":"icon.tsx"}],"Column.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.tsx","./icon":"icon.tsx"}],"InputForm.tsx":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.InputForm = InputForm;
+var _react = _interopRequireWildcard(require("react"));
+function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
+function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+function InputForm({
+  value,
+  onChange,
+  onConfirm,
+  onCancel,
+  className
+}) {
+  const disabled = !(value === null || value === void 0 ? void 0 : value.trim());
+  const handleConfirm = () => {
+    if (disabled) return;
+    onConfirm === null || onConfirm === void 0 ? void 0 : onConfirm();
+  };
+  const ref = useAutoFitToContentHeight(value);
+  return _react.default.createElement(Container, {
+    className: className
+  }, _react.default.createElement(Input, {
+    ref: ref,
+    autoFocus: true,
+    placeholder: "Enter a note",
+    value: value,
+    onChange: ev => onChange === null || onChange === void 0 ? void 0 : onChange(ev.currentTarget.value),
+    onKeyDown: ev => {
+      if (!((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter')) return;
+      handleConfirm();
+    }
+  }), _react.default.createElement(ButtonRow, null, _react.default.createElement(AddButton, {
+    disabled: disabled,
+    onClick: handleConfirm
+  }), _react.default.createElement(CancelButton, {
+    onClick: onCancel
+  })));
+}
+/**
+ * テキストエリアの高さを内容に合わせて自動調整する
+ *
+ * @param content テキストエリアの内容
+ */
+function useAutoFitToContentHeight(content) {
+  const ref = (0, _react.useRef)(null);
+  (0, _react.useEffect)(() => {
+    const el = ref.current;
+    if (!el) return;
+    const {
+      borderTopWidth,
+      borderBottomWidth
+    } = getComputedStyle(el);
+    el.style.height = 'auto'; // 一度 auto にしないと高さが縮まなくなる
+    el.style.height = `calc(${borderTopWidth} + ${el.scrollHeight}px + ${borderBottomWidth})`;
+  },
+  // 内容が変わるたびに高さを再計算
+  [content]);
+  return ref;
+}
+},{"react":"../node_modules/react/index.js"}],"Column.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -32709,7 +32870,11 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Column = Column;
 var _react = _interopRequireWildcard(require("react"));
+var _styledComponents = _interopRequireDefault(require("styled-components"));
+var color = _interopRequireWildcard(require("./color"));
 var _Card = require("./Card");
+var _InputForm2 = require("./InputForm");
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 function Column({
@@ -32718,39 +32883,52 @@ function Column({
   cards: rawCards,
   onCardDragStart,
   onCardDrop,
-  onCardDeleteClick
+  onCardDeleteClick,
+  text,
+  onTextChange,
+  onTextConfirm,
+  onTextCancel
 }) {
-  var _a, _b;
+  var _a, _b, _c;
   const filterValue = rawFilterValue === null || rawFilterValue === void 0 ? void 0 : rawFilterValue.trim();
   const keywords = (_a = filterValue === null || filterValue === void 0 ? void 0 : filterValue.toLowerCase().split(/\s+/g)) !== null && _a !== void 0 ? _a : [];
-  const cards = rawCards.filter(({
+  const cards = rawCards === null || rawCards === void 0 ? void 0 : rawCards.filter(({
     text
   }) => keywords === null || keywords === void 0 ? void 0 : keywords.every(w => text === null || text === void 0 ? void 0 : text.toLowerCase().includes(w)));
-  const totalCount = rawCards.length;
-  const [text, setText] = (0, _react.useState)('');
+  const totalCount = (_b = rawCards === null || rawCards === void 0 ? void 0 : rawCards.length) !== null && _b !== void 0 ? _b : -1;
   const [inputMode, setInputMode] = (0, _react.useState)(false);
   const toggleInput = () => setInputMode(v => !v);
-  const confirmInput = () => setText('');
-  const cancelInput = () => setInputMode(false);
+  const confirmInput = () => {
+    onTextConfirm === null || onTextConfirm === void 0 ? void 0 : onTextConfirm();
+  };
+  const cancelInput = () => {
+    setInputMode(false);
+    onTextCancel === null || onTextCancel === void 0 ? void 0 : onTextCancel();
+  };
   const [draggingCardID, setDraggingCardID] = (0, _react.useState)(undefined);
-  return _react.default.createElement(Container, null, _react.default.createElement(Header, null, _react.default.createElement(CountBadge, null, totalCount), _react.default.createElement(ColumnName, null, title), _react.default.createElement(AddButton, {
+  const handleCardDragStart = id => {
+    setDraggingCardID(id);
+    onCardDragStart === null || onCardDragStart === void 0 ? void 0 : onCardDragStart(id);
+  };
+  return _react.default.createElement(Container, null, _react.default.createElement(Header, null, totalCount >= 0 && _react.default.createElement(CountBadge, null, totalCount), _react.default.createElement(ColumnName, null, title), _react.default.createElement(AddButton, {
     onClick: toggleInput
   })), inputMode && _react.default.createElement(InputForm, {
     value: text,
-    onChange: setText,
+    onChange: onTextChange,
     onConfirm: confirmInput,
     onCancel: cancelInput
-  }), filterValue && _react.default.createElement(ResultCount, null, cards.length, " results"), _react.default.createElement(VerticalScroll, null, cards.map(({
+  }), !cards ? _react.default.createElement(Loading, null) : _react.default.createElement(_react.default.Fragment, null, filterValue && _react.default.createElement(ResultCount, null, cards.length, " results"), _react.default.createElement(VerticalScroll, null, cards.map(({
     id,
     text
   }, i) => {
     var _a;
     return _react.default.createElement(_Card.Card.DropArea, {
       key: id,
-      disabled: draggingCardID !== undefined && (id === draggingCardID || ((_a = cards[i - 1]) === null || _a === void 0 ? void 0 : _a.id) === draggingCardID)
+      disabled: draggingCardID !== undefined && (id === draggingCardID || ((_a = cards[i - 1]) === null || _a === void 0 ? void 0 : _a.id) === draggingCardID),
+      onDrop: () => onCardDrop === null || onCardDrop === void 0 ? void 0 : onCardDrop(id)
     }, _react.default.createElement(_Card.Card, {
       text: text,
-      onDragStart: () => setDraggingCardID(id),
+      onDragStart: () => handleCardDragStart(id),
       onDragEnd: () => setDraggingCardID(undefined),
       onDeleteClick: () => onCardDeleteClick === null || onCardDeleteClick === void 0 ? void 0 : onCardDeleteClick(id)
     }));
@@ -32758,10 +32936,25 @@ function Column({
     style: {
       height: '100%'
     },
-    disabled: draggingCardID !== undefined && ((_b = cards[cards.length - 1]) === null || _b === void 0 ? void 0 : _b.id) === draggingCardID
-  })));
+    disabled: draggingCardID !== undefined && ((_c = cards[cards.length - 1]) === null || _c === void 0 ? void 0 : _c.id) === draggingCardID,
+    onDrop: () => onCardDrop === null || onCardDrop === void 0 ? void 0 : onCardDrop(null)
+  }))));
 }
-},{"react":"../node_modules/react/index.js","./Card":"Card.tsx"}],"Button.tsx":[function(require,module,exports) {
+const InputForm = (0, _styledComponents.default)(_InputForm2.InputForm)`
+padding: 8px;
+`;
+const Loading = _styledComponents.default.div.attrs({
+  children: 'Loading...'
+})`
+padding: 8px;
+font-size: 14px;
+`;
+const ResultCount = _styledComponents.default.div`
+color: ${color.Black};
+font-size: 12px;
+text-align: center;
+`;
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.tsx","./Card":"Card.tsx","./InputForm":"InputForm.tsx"}],"Button.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -32913,6 +33106,8 @@ exports.App = App;
 var _react = _interopRequireWildcard(require("react"));
 var _styledComponents = _interopRequireDefault(require("styled-components"));
 var _immer = _interopRequireDefault(require("immer"));
+var _util = require("./util");
+var _api = require("./api");
 var _Column = require("./Column");
 var _DeleteDialog = require("./DeleteDialog");
 var _Overlay2 = require("./Overlay");
@@ -32921,65 +33116,52 @@ function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "functio
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 function App() {
   const [filterValue, setFilterValue] = (0, _react.useState)('');
-  const [columns, setColumns] = (0, _react.useState)([{
-    id: 'A',
-    title: 'TODO',
-    cards: [{
-      id: 'a',
-      text: '朝食をとる🍞'
-    }, {
-      id: 'b',
-      text: 'SNSをチェックする🐦'
-    }, {
-      id: 'c',
-      text: '布団に入る (:3[___]'
-    }]
-  }, {
-    id: 'B',
-    title: 'Doing',
-    cards: [{
-      id: 'd',
-      text: '顔を洗う👐'
-    }, {
-      id: 'e',
-      text: '歯を磨く🦷'
-    }]
-  }, {
-    id: 'C',
-    title: 'Waiting',
-    cards: []
-  }, {
-    id: 'D',
-    title: 'Done',
-    cards: [{
-      id: 'f',
-      text: '布団から出る (:3っ)っ -=三[＿＿]'
-    }]
-  }]);
+  const [{
+    columns
+  }, setData] = (0, _react.useState)({
+    cardsOrder: {}
+  });
+  (0, _react.useEffect)(() => {
+    ;
+    (async () => {
+      const columns = await (0, _api.api)('GET /v1/columns', null);
+      setData((0, _immer.default)(draft => {
+        draft.columns = columns;
+      }));
+      const [unorderedCards, cardsOrder] = await Promise.all([(0, _api.api)('GET /v1/cards', null), (0, _api.api)('GET /v1/cardsOrder', null)]);
+      setData((0, _immer.default)(draft => {
+        var _a;
+        draft.cardsOrder = cardsOrder;
+        (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.forEach(column => {
+          column.cards = (0, _util.sortBy)(unorderedCards, cardsOrder, column.id);
+        });
+      }));
+    })();
+  }, []);
   const [draggingCardID, setDraggingCardID] = (0, _react.useState)(undefined);
-  const deleteCard = () => {
-    const cardID = deletingCardID;
-    if (!cardID) return;
-    setDeletingCardID(undefined);
-    setColumns((0, _immer.default)(columns => {
-      const column = columns.find(col => col.cards.some(c => c.id === cardID));
-      if (!column) return;
-      column.cards = column.cards.filter(c => c.id !== cardID);
-    }));
-  };
   const dropCardTo = toID => {
     const fromID = draggingCardID;
     if (!fromID) return;
     setDraggingCardID(undefined);
     if (fromID === toID) return;
-    setColumns((0, _immer.default)(columns => {
-      const card = columns.flatMap(col => col.cards).find(c => c.id === fromID);
+    setData((0, _immer.default)(draft => {
+      var _a, _b, _c;
+      const card = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.flatMap(col => {
+        var _a;
+        return (_a = col.cards) !== null && _a !== void 0 ? _a : [];
+      }).find(c => c.id === fromID);
       if (!card) return;
-      const fromColumn = columns.find(col => col.cards.some(c => c.id === fromID));
-      if (!fromColumn) return;
+      const fromColumn = (_b = draft.columns) === null || _b === void 0 ? void 0 : _b.find(col => {
+        var _a;
+        return (_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(c => c.id === fromID);
+      });
+      if (!(fromColumn === null || fromColumn === void 0 ? void 0 : fromColumn.cards)) return;
       fromColumn.cards = fromColumn.cards.filter(c => c.id !== fromID);
-      const toColumn = columns.find(col => col.id === toID || col.cards.some(c => c.id === toID));
-      if (!toColumn) return;
+      const toColumn = (_c = draft.columns) === null || _c === void 0 ? void 0 : _c.find(col => {
+        var _a;
+        return col.id === toID || ((_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(c => c.id === toID));
+      });
+      if (!(toColumn === null || toColumn === void 0 ? void 0 : toColumn.cards)) return;
       let index = toColumn.cards.findIndex(c => c.id === toID);
       if (index < 0) {
         index = toColumn.cards.length;
@@ -32987,23 +33169,61 @@ function App() {
       toColumn.cards.splice(index, 0, card);
     }));
   };
+  const setText = (columnID, value) => {
+    setData((0, _immer.default)(draft => {
+      var _a;
+      const column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(c => c.id === columnID);
+      if (!column) return;
+      column.text = value;
+    }));
+  };
+  const addCard = columnID => {
+    const column = columns === null || columns === void 0 ? void 0 : columns.find(c => c.id === columnID);
+    if (!column) return;
+    const text = column.text;
+    const cardID = (0, _util.randomID)();
+    setData((0, _immer.default)(draft => {
+      var _a, _b;
+      const column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(c => c.id === columnID);
+      if (!column) return;
+      (_b = column.cards) === null || _b === void 0 ? void 0 : _b.unshift({
+        id: cardID,
+        text: column.text
+      });
+      column.text = '';
+    }));
+    (0, _api.api)('POST /v1/cards', {
+      id: cardID,
+      text
+    });
+  };
   const [deletingCardID, setDeletingCardID] = (0, _react.useState)(undefined);
+  const deleteCard = () => {
+    const cardID = deletingCardID;
+    if (!cardID) return;
+    setDeletingCardID(undefined);
+    setData((0, _immer.default)(draft => {
+      var _a, _b;
+      const column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(col => col.cards.some(c => c.id === cardID));
+      if (!column) return;
+      column.cards = (_b = column.cards) === null || _b === void 0 ? void 0 : _b.filter(c => c.id !== cardID);
+    }));
+  };
   return _react.default.createElement(Container, null, _react.default.createElement(Header, {
     filterValue: filterValue,
     onFilterChange: setFilterValue
-  }), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, columns.map(({
-    id: columnID,
-    title,
-    cards
-  }) => _react.default.createElement(_Column.Column, {
+  }), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, {}, "columns ? (", _react.default.createElement(Loading, null), ") : ( columns.map((", id, ": columnID, title, cards, text }) => (", _react.default.createElement(_Column.Column, {
     key: columnID,
     title: title,
     filterValue: filterValue,
     cards: cards,
     onCardDragStart: cardID => setDraggingCardID(cardID),
     onCardDrop: entered => dropCardTo(entered !== null && entered !== void 0 ? entered : columnID),
-    onCardDeleteClick: cardID => setDeletingCardID(cardID)
-  })))), deletingCardID && _react.default.createElement(Overlay, {
+    onCardDeleteClick: cardID => setDeletingCardID(cardID),
+    text: text,
+    onTextChange: value => setText(columnID, value),
+    onTextConfirm: () => addCard(columnID)
+  }), "))} )) )}")), deletingCardID && _react.default.createElement(Overlay, {
     onClick: () => setDeletingCardID(undefined)
   }, _react.default.createElement(_DeleteDialog.DeleteDialog, {
     onConfirm: () => setDeletingCardID(undefined),
@@ -33027,13 +33247,18 @@ function App() {
      content: '';
    }
  `;
+  const Loading = _styledComponents.default.div.attrs({
+    children: 'Loading...'
+  })`
+  font-size: 14px;
+`;
   const Overlay = (0, _styledComponents.default)(_Overlay2.Overlay)`
    display: flex;
    justify-content: center;
    align-items: center;
  `;
 }
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","immer":"../node_modules/immer/dist/immer.legacy-esm.js","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","immer":"../node_modules/immer/dist/immer.legacy-esm.js","./util":"util.ts","./api":"api.ts","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
 "use strict";
 
 var _react = _interopRequireDefault(require("react"));
@@ -33067,7 +33292,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "62514" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50026" + '/');
   ws.onmessage = function (event) {
     checkedAssets = {};
     assetsToAccept = [];
